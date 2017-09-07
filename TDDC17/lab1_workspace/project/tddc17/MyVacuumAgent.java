@@ -100,8 +100,14 @@ class MyAgentProgram implements AgentProgram {
 	private Random random_generator = new Random();
 	
 	// Here you can define your variables!
-	public int iterationCounter = 10;
+	public int iterationCounter = 1800;
 	public MyAgentState state = new MyAgentState();
+	
+	public boolean followGoal = false;
+	public int goal_x_position;
+	public int goal_y_position;
+	public boolean cleaningDone = false;
+	public int eastWall = 30, southWall = 30;
 	
 	// moves the Agent to a random start position
 	// uses percepts to update the Agent position - only the position, other percepts are ignored
@@ -180,11 +186,13 @@ class MyAgentProgram implements AgentProgram {
 	    }
 	    if (dirt)
 	    	state.updateWorld(state.agent_x_position,state.agent_y_position,state.DIRT);
-	    else
+	    else if(!home)
 	    	state.updateWorld(state.agent_x_position,state.agent_y_position,state.CLEAR);
 	    
 	    state.printWorldDebug();
 	    
+	    //state.agent_last_action=state.ACTION_NONE;
+    	//return NoOpAction.NO_OP;
 	    
 	    // Next action selection based on the percept value
 	    if (dirt)
@@ -193,19 +201,123 @@ class MyAgentProgram implements AgentProgram {
 	    	state.agent_last_action=state.ACTION_SUCK;
 	    	return LIUVacuumEnvironment.ACTION_SUCK;
 	    } 
-	    else
-	    {
-	    	if (bump)
-	    	{
-	    		state.agent_last_action=state.ACTION_NONE;
-		    	return NoOpAction.NO_OP;
-	    	}
-	    	else
-	    	{
+	    
+	    if (home && cleaningDone){
+	    	state.agent_last_action=state.ACTION_NONE;
+	    	return NoOpAction.NO_OP;
+	    }
+	    
+	    if(followGoal){
+	    	if(state.agent_x_position < goal_x_position){
+	    		if(state.agent_direction != MyAgentState.EAST){
+	    			state.agent_direction = (state.agent_direction +1)%4;
+		    		state.agent_last_action=state.ACTION_TURN_RIGHT;
+		    		return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
+	    		}
 	    		state.agent_last_action=state.ACTION_MOVE_FORWARD;
-	    		return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
+    			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
+	    	}
+	    	else if(state.agent_x_position > goal_x_position){
+	    		if(state.agent_direction != MyAgentState.WEST){
+	    			state.agent_direction = (state.agent_direction +1)%4;
+		    		state.agent_last_action=state.ACTION_TURN_RIGHT;
+		    		return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
+	    		}
+	    		state.agent_last_action=state.ACTION_MOVE_FORWARD;
+    			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
+	    	}
+	    	else if(state.agent_y_position > goal_y_position){
+	    		if(state.agent_direction != MyAgentState.NORTH){
+	    			state.agent_direction = (state.agent_direction +1)%4;
+		    		state.agent_last_action=state.ACTION_TURN_RIGHT;
+		    		return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
+	    		}
+	    		state.agent_last_action=state.ACTION_MOVE_FORWARD;
+    			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
+	    	}
+	    	else if(state.agent_y_position < goal_y_position){
+	    		if(state.agent_direction != MyAgentState.SOUTH){
+	    			state.agent_direction = (state.agent_direction +1)%4;
+		    		state.agent_last_action=state.ACTION_TURN_RIGHT;
+		    		return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
+	    		}
+	    		state.agent_last_action=state.ACTION_MOVE_FORWARD;
+    			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
+	    	}
+	    	else{
+	    		followGoal = false;
 	    	}
 	    }
+	    
+	    if(isCorneredCheck()){
+	    	if (isDone()){
+	    		cleaningDone = true;
+	    		setGoal(1,1);
+	    	}
+	    }
+	    
+		if (bump)
+		{
+			if (state.agent_direction == MyAgentState.EAST)
+				eastWall = state.agent_x_position + 1;
+			else if (state.agent_direction == MyAgentState.SOUTH)
+				southWall = state.agent_y_position + 1;
+			state.agent_direction = (state.agent_direction +1)%4;
+			state.agent_last_action=state.ACTION_TURN_RIGHT;
+			return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
+		}
+		else
+		{
+			if(forwardCheck() == 2){
+				state.agent_direction = (state.agent_direction +1)%4;
+	    		state.agent_last_action=state.ACTION_TURN_RIGHT;
+	    		return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
+			}else{
+				state.agent_last_action=state.ACTION_MOVE_FORWARD;
+				return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
+			}
+			
+		}
+	}
+	
+	int forwardCheck() {
+		switch (state.agent_direction) {
+		case MyAgentState.NORTH:
+			return state.world[state.agent_x_position][state.agent_y_position-1];
+		case MyAgentState.EAST:
+			return state.world[state.agent_x_position+1][state.agent_y_position];
+		case MyAgentState.SOUTH:
+			return state.world[state.agent_x_position][state.agent_y_position+1];
+		case MyAgentState.WEST:
+			return state.world[state.agent_x_position-1][state.agent_y_position];
+		}
+		return -1;
+	}
+	
+	boolean isCorneredCheck() {
+		if(state.world[state.agent_x_position][state.agent_y_position-1] != 0 &&
+			state.world[state.agent_x_position][state.agent_y_position+1] != 0 &&
+			state.world[state.agent_x_position-1][state.agent_y_position] != 0 &&
+			state.world[state.agent_x_position+1][state.agent_y_position] != 0)
+			return true;
+		return false;
+	}
+	
+	void setGoal(int x, int y) {
+		followGoal = true;
+		goal_x_position = x;
+		goal_y_position = y;
+	}
+	boolean isDone(){
+		for(int i = 1; i < eastWall-1;i++){
+			for(int j = 1; j < southWall-1;j++ ){
+				if (state.world[i][j] == 0){
+					setGoal(i,j);
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 }
 
