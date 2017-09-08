@@ -7,7 +7,46 @@ import aima.core.agent.AgentProgram;
 import aima.core.agent.Percept;
 import aima.core.agent.impl.*;
 
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Queue;
 import java.util.Random;
+import java.util.Set;
+
+class Coord{
+	public int x;
+	public int y;
+	
+	public Coord(int x, int y){
+		this.x = x;
+		this.y = y;
+	}
+	
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + x;
+		result = prime * result + y;
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Coord other = (Coord) obj;
+		if (x != other.x)
+			return false;
+		if (y != other.y)
+			return false;
+		return true;
+	}
+}
 
 class MyAgentState
 {
@@ -108,6 +147,8 @@ class MyAgentProgram implements AgentProgram {
 	public int goal_y_position;
 	public boolean cleaningDone = false;
 	public int eastWall = 30, southWall = 30;
+	public Queue<Coord> searchQueue = new LinkedList<Coord>();
+	public Set<Coord> visited = new HashSet<Coord>();
 	
 	// moves the Agent to a random start position
 	// uses percepts to update the Agent position - only the position, other percepts are ignored
@@ -195,6 +236,20 @@ class MyAgentProgram implements AgentProgram {
     	//return NoOpAction.NO_OP;
 	    
 	    // Next action selection based on the percept value
+	    System.out.println("SearchQueue: " + searchQueue);
+	    
+	    visited.add(new Coord(state.agent_x_position, state.agent_y_position));
+	    queueNearbyCoords();
+	    
+	    if(!followGoal){
+	    	try{
+	    		setGoal(searchQueue.remove());
+	    	}catch(Exception e){
+	    		cleaningDone = true;
+	    		setGoal(new Coord(1,1));
+	    	}
+	    }
+	    
 	    if (dirt)
 	    {
 	    	System.out.println("DIRT -> choosing SUCK action!");
@@ -245,6 +300,7 @@ class MyAgentProgram implements AgentProgram {
     			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
 	    	}
 	    	else{
+	    		//goal was found
 	    		followGoal = false;
 	    	}
 	    }
@@ -258,6 +314,20 @@ class MyAgentProgram implements AgentProgram {
 	    
 		if (bump)
 		{
+			/*if(state.agent_direction == MyAgentState.EAST){
+				visited.add(new Coord(state.agent_x_position+1, state.agent_y_position));
+			}
+			if(state.agent_direction == MyAgentState.NORTH){
+				visited.add(new Coord(state.agent_x_position, state.agent_y_position-1));
+			}
+			if(state.agent_direction == MyAgentState.WEST){
+				visited.add(new Coord(state.agent_x_position-1, state.agent_y_position));
+			}
+			if(state.agent_direction == MyAgentState.EAST){
+				visited.add(new Coord(state.agent_x_position+1, state.agent_y_position));
+			}*/
+			
+			
 			if (state.agent_direction == MyAgentState.EAST)
 				eastWall = state.agent_x_position + 1;
 			else if (state.agent_direction == MyAgentState.SOUTH)
@@ -303,11 +373,22 @@ class MyAgentProgram implements AgentProgram {
 		return false;
 	}
 	
+	void removeGoalIfBlocked(){
+		//TODO
+	}
+	
 	void setGoal(int x, int y) {
 		followGoal = true;
 		goal_x_position = x;
 		goal_y_position = y;
 	}
+	
+	void setGoal(Coord coord) {
+		followGoal = true;
+		goal_x_position = coord.x;
+		goal_y_position = coord.y;
+	}
+	
 	boolean isDone(){
 		for(int i = 1; i < eastWall-1;i++){
 			for(int j = 1; j < southWall-1;j++ ){
@@ -318,6 +399,27 @@ class MyAgentProgram implements AgentProgram {
 			}
 		}
 		return true;
+	}
+	
+	void queueNearbyCoords(){
+		int x = state.agent_x_position;
+		int y = state.agent_y_position;
+		
+		queueCoord(new Coord(x,y-1));
+		queueCoord(new Coord(x+1,y-1));
+		queueCoord(new Coord(x+1,y));
+		queueCoord(new Coord(x+1,y+1));
+		queueCoord(new Coord(x,y+1));
+		queueCoord(new Coord(x-1,y+1));
+		queueCoord(new Coord(x-1,y));
+		queueCoord(new Coord(x-1,y-1));
+		
+	}
+	
+	void queueCoord(Coord coord){
+		if(!visited.contains(coord)){
+			searchQueue.add(coord);
+		}
 	}
 }
 
