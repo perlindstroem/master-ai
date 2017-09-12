@@ -7,8 +7,55 @@ import aima.core.agent.AgentProgram;
 import aima.core.agent.Percept;
 import aima.core.agent.impl.*;
 
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.Queue;
 import java.util.Random;
+import java.util.Set;
+import java.util.Stack;
+/*
+class Coord{
+	public int x;
+	public int y;
+	
+	public Coord(int x, int y){
+		this.x = x;
+		this.y = y;
+	}
+	
+	@Override
+	public String toString() {
+		return "Coord [x=" + x + ", y=" + y + "]";
+	}
 
+	@Override
+	public int hashCode() {
+		final int prime = 31;
+		int result = 1;
+		result = prime * result + x;
+		result = prime * result + y;
+		return result;
+	}
+
+	@Override
+	public boolean equals(Object obj) {
+		if (this == obj)
+			return true;
+		if (obj == null)
+			return false;
+		if (getClass() != obj.getClass())
+			return false;
+		Coord other = (Coord) obj;
+		if (x != other.x)
+			return false;
+		if (y != other.y)
+			return false;
+		return true;
+	}
+}
+*/
 class MyAgentState_b
 {
 	public int[][] world = new int[30][30];
@@ -108,6 +155,10 @@ class MyAgentProgram_b implements AgentProgram {
 	public int goal_y_position;
 	public boolean cleaningDone = false;
 	public int eastWall = 30, southWall = 30;
+	public Queue<Coord> searchQueue = new LinkedList<Coord>();
+	public Stack<Coord> goalStack = new Stack<Coord>();
+	public Set<Coord> visited = new HashSet<Coord>();
+	public Set<Coord> obstacles = new HashSet<Coord>();
 	
 	// moves the Agent to a random start position
 	// uses percepts to update the Agent position - only the position, other percepts are ignored
@@ -195,6 +246,25 @@ class MyAgentProgram_b implements AgentProgram {
     	//return NoOpAction.NO_OP;
 	    
 	    // Next action selection based on the percept value
+	    System.out.println("SearchQueue: " + searchQueue);
+	    
+	    visited.add(new Coord(state.agent_x_position, state.agent_y_position));
+	    queueNearbyCoords();
+	    
+	    if(!followGoal){
+	    	try{
+	    		Coord goal = searchQueue.remove();
+	    		System.out.println("New goal: " + goal);
+	    		setGoal(goal);
+	    	}catch(Exception e){
+	    		cleaningDone = true;
+	    		setGoal(new Coord(1,1));
+	    	}
+	    } else {
+	    	Coord goal = new Coord(goal_x_position, goal_y_position);
+	    	System.out.println("Current goal: " + goal);
+	    }
+	    
 	    if (dirt)
 	    {
 	    	System.out.println("DIRT -> choosing SUCK action!");
@@ -206,6 +276,57 @@ class MyAgentProgram_b implements AgentProgram {
 	    	state.agent_last_action=state.ACTION_NONE;
 	    	return NoOpAction.NO_OP;
 	    }
+	    
+	    if (bump) {
+			System.out.println("BUMPED");
+			int next_x_position = state.agent_x_position;
+			int next_y_position = state.agent_y_position;
+			
+			if(state.agent_direction == MyAgentState.EAST ){
+				next_x_position = state.agent_x_position+1;
+				next_y_position = state.agent_y_position;
+			}
+			if(state.agent_direction == MyAgentState.NORTH){
+				next_x_position = state.agent_x_position;
+				next_y_position = state.agent_y_position-1;
+			}
+			if(state.agent_direction == MyAgentState.WEST){
+				next_x_position = state.agent_x_position-1;
+				next_y_position = state.agent_y_position;
+			}
+			if(state.agent_direction == MyAgentState.SOUTH){
+				next_x_position = state.agent_x_position;
+				next_y_position = state.agent_y_position+1;
+			}
+			
+			if(goal_x_position == next_x_position && goal_y_position == next_y_position){
+				followGoal = false;
+			}
+			
+			obstacles.add(new Coord(next_x_position, next_y_position));
+			
+			/*if (state.agent_direction == MyAgentState.EAST)
+				eastWall = state.agent_x_position + 1;
+			else if (state.agent_direction == MyAgentState.SOUTH)
+				southWall = state.agent_y_position + 1;*/
+			
+			
+			state.agent_direction = (state.agent_direction +1)%4;
+			state.agent_last_action=state.ACTION_TURN_RIGHT;
+			return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
+		}
+		/*else
+		{
+			if(forwardCheck() == 2){
+				state.agent_direction = (state.agent_direction +1)%4;
+	    		state.agent_last_action=state.ACTION_TURN_RIGHT;
+	    		return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
+			}else{
+				state.agent_last_action=state.ACTION_MOVE_FORWARD;
+				return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
+			}
+			
+		}*/
 	    
 	    if(followGoal){
 	    	if(state.agent_x_position < goal_x_position){
@@ -245,39 +366,103 @@ class MyAgentProgram_b implements AgentProgram {
     			return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
 	    	}
 	    	else{
+	    		//goal was found
 	    		followGoal = false;
 	    	}
 	    }
 	    
-	    if(isCorneredCheck()){
+	    /*if(isCorneredCheck()){
 	    	if (isDone()){
 	    		cleaningDone = true;
 	    		setGoal(1,1);
 	    	}
-	    }
+	    }*/
 	    
-		if (bump)
-		{
-			if (state.agent_direction == MyAgentState.EAST)
-				eastWall = state.agent_x_position + 1;
-			else if (state.agent_direction == MyAgentState.SOUTH)
-				southWall = state.agent_y_position + 1;
-			state.agent_direction = (state.agent_direction +1)%4;
-			state.agent_last_action=state.ACTION_TURN_RIGHT;
-			return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
-		}
-		else
-		{
-			if(forwardCheck() == 2){
-				state.agent_direction = (state.agent_direction +1)%4;
-	    		state.agent_last_action=state.ACTION_TURN_RIGHT;
-	    		return LIUVacuumEnvironment.ACTION_TURN_RIGHT;
-			}else{
-				state.agent_last_action=state.ACTION_MOVE_FORWARD;
-				return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
+	    state.agent_last_action=state.ACTION_MOVE_FORWARD;
+		return LIUVacuumEnvironment.ACTION_MOVE_FORWARD;
+	}
+	
+	Queue<Coord> calculatePath(Coord start, Coord goal){
+		Set<Coord> closedSet = new HashSet<Coord>();
+		Set<Coord> openSet = new HashSet<Coord>();
+		openSet.add(start);
+		
+		Map<Coord, Coord> cameFrom = new HashMap<Coord, Coord>();
+		Map<Coord, Integer> gScore = new HashMap<Coord, Integer>();
+		gScore.put(start, 0);
+		
+		Map<Coord, Double> fScore = new HashMap<Coord, Double>();
+		fScore.put(start, heuristicCost(start,goal));
+		
+		Coord[] nearby = new Coord[] {
+				new Coord(start.x+1, start.y),
+				new Coord(start.x-1, start.y),
+				new Coord(start.x, start.y+1),
+				new Coord(start.x, start.y-1)
+		};
+		
+		while(!openSet.isEmpty()){
+			Coord current = getLowestScore(openSet, fScore);
+			
+			if(current == goal){
+				return reconstructPath(cameFrom, current);
+			}
+			
+			openSet.remove(current);
+			closedSet.add(current);
+			
+			for(Coord neighbour : nearby){
+				if(closedSet.contains(neighbour) || obstacles.contains(neighbour)){
+					continue;
+				}
+				
+				if(!openSet.contains(neighbour)){
+					openSet.add(neighbour);
+				}
+				
+				//fortsätt här
+				//tentativeGScore = 
 			}
 			
 		}
+		
+		return null;
+	}
+	
+	Coord[] getNeighbours(Coord coord){
+		return new Coord[] {
+				new Coord(coord.x+1, coord.y),
+				new Coord(coord.x-1, coord.y),
+				new Coord(coord.x, coord.y+1),
+				new Coord(coord.x, coord.y-1)
+		};
+		
+	}
+	
+	Coord getLowestScore(Set<Coord> set, Map<Coord, Double> score){
+		Coord minNode = null;
+		
+		double minScore = 1000;
+		for(Coord coord : set){
+			if(score.get(coord) < minScore){
+				minNode = coord;
+			}
+		}
+		
+		return null;
+	}
+	
+	double heuristicCost(Coord a, Coord b){
+		int dx = Math.abs(a.x - b.x);
+		int dy = Math.abs(a.y - b.y);
+		
+		return Math.sqrt((dx*dx) + (dy*dy));
+	}
+	
+	Queue<Coord> reconstructPath(Map<Coord, Coord> cameFrom, Coord current){
+		
+		
+		return null;
 	}
 	
 	int forwardCheck() {
@@ -303,11 +488,22 @@ class MyAgentProgram_b implements AgentProgram {
 		return false;
 	}
 	
+	void removeGoalIfBlocked(){
+		//TODO
+	}
+	
 	void setGoal(int x, int y) {
 		followGoal = true;
 		goal_x_position = x;
 		goal_y_position = y;
 	}
+	
+	void setGoal(Coord coord) {
+		followGoal = true;
+		goal_x_position = coord.x;
+		goal_y_position = coord.y;
+	}
+	
 	boolean isDone(){
 		for(int i = 1; i < eastWall-1;i++){
 			for(int j = 1; j < southWall-1;j++ ){
@@ -319,10 +515,33 @@ class MyAgentProgram_b implements AgentProgram {
 		}
 		return true;
 	}
+	
+	void queueNearbyCoords(){
+		int x = state.agent_x_position;
+		int y = state.agent_y_position;
+		
+		queueCoord(new Coord(x,y-1));
+		//queueCoord(new Coord(x+1,y-1));
+		queueCoord(new Coord(x+1,y));
+		//queueCoord(new Coord(x+1,y+1));
+		queueCoord(new Coord(x,y+1));
+		//queueCoord(new Coord(x-1,y+1));
+		queueCoord(new Coord(x-1,y));
+		//queueCoord(new Coord(x-1,y-1));
+		
+	}
+	
+	void queueCoord(Coord coord){
+		if(!visited.contains(coord) && !searchQueue.contains(coord) && !obstacles.contains(coord)){
+			searchQueue.add(coord);
+		} else {
+			System.out.println("Tried to add visisted: " + coord);
+		}
+	}
 }
 
-public class MyVacuumAgent_backup extends AbstractAgent {
-    public MyVacuumAgent_backup() {
+public class MyVacuumAgent_astar extends AbstractAgent {
+    public MyVacuumAgent_astar() {
     	super(new MyAgentProgram());
 	}
 }
