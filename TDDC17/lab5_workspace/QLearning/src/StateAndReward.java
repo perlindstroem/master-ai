@@ -1,7 +1,8 @@
 public class StateAndReward {
 
 	/* State discretization function for the angle controller */
-	public static String getStateAngle2(double angle, double vx, double vy) {
+	/*MAIN SOLUTION*/
+	public static String getStateAngle(double angle, double vx, double vy) {
 
 		/* TODO: IMPLEMENT THIS FUNCTION */
 		int a = discretize(angle, 10, -Math.PI, Math.PI);
@@ -14,7 +15,8 @@ public class StateAndReward {
 	}
 
 	/* State discretization function for the angle controller */
-	public static String getStateAngle(double angle, double vx, double vy) {
+	/*ALTERNATIVE SOLUTION*/
+	public static String getStateAngle1(double angle, double vx, double vy) {
 		int a = discretize(angle, 21, -Math.PI, Math.PI);
 		if(a>10){
 			return "r";
@@ -37,6 +39,7 @@ public class StateAndReward {
 	}
 
 	/* State discretization function for the full hover controller */
+	/*MAIN SOLUTION*/
 	public static String getStateHover(double angle, double vx, double vy) {
 		int a = discretize(angle, 10, -Math.PI, Math.PI);
 		int x = discretize(vx,10,-25.0,25.0);
@@ -44,13 +47,14 @@ public class StateAndReward {
 		
 		return a+","+x+","+y+"!";
 	}
-	
+	/*ALTERNATIVE SOLUTION/*
 	/* State discretization function for the full hover controller */
 	public static String getStateHover1(double angle, double vx, double vy) {		
-		return getStateAngle(angle, vx, vy) + (vy > 0 ? "d" : "u") /*+ (vx > 0 ? "rr" : "ll")*/;
+		return getStateAngle1(angle, vx, vy) + (vy > 0 ? "d" : "u") /*+ (vx > 0 ? "rr" : "ll")*/;
 	}
 	
 	/* Reward function for the full hover controller */
+	/*MAIN SOLUTION*/
 	public static double getRewardHover(double angle, double vx, double vy) {
 		double v = Math.sqrt(Math.pow(vx,2)+Math.pow((vy),2));
 		double a = Math.abs(angle);
@@ -60,6 +64,7 @@ public class StateAndReward {
 	
 	
 	/* Reward function for the full hover controller */
+	/*ALTERNATIVE SOLUTION*/
 	public static double getRewardHover1(double angle, double vx, double vy) {
 		//double v = Math.sqrt(Math.pow(vx,2)+Math.pow((vy-1),2));
 		//double a = Math.abs(angle);
